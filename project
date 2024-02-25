@@ -1,0 +1,63 @@
+var_list = ['wrkstat', 'prestige'] # List of variables you want to save
+output_filename = 'selected_gss_data.csv' # Name of the file you want to save the data to
+
+modes = ['w','a'] # Has write mode and append mode
+phase = 0 # Starts in write mode; after one iteration of loop, switches to append mode
+
+for k in range(3): # for each chunk of the data
+    url = 'https://github.com/DS3001/project_gss/raw/main/gss_chunk_' + str(1+k) + '.parquet' # Create url to the chunk to be processed
+    #print(url) # Check the url is correct
+    df = pd.read_parquet(url) # Download this chunk of data
+    #print(df.head()) # Visually inspect the first few rows
+    df.loc[:,var_list].to_csv(output_filename, # specifies target file to save the chunk to
+                              mode=modes[phase], # control write versus append
+                              header=var_list, # variable names
+                              index=False) # no row index saved
+    phase = 1 # Switch from write mode to append mode
+
+print(df.shape)
+df.columns
+# 6694 columns/variables
+# Creating new data frame with certain, potentially relevant variables
+df2 = df[['age', 'sex', 'race', 'dipged', 'degree', 'educ', 'health', 'happy', 
+          'marital', 'martype', 'agewed', 'divorce', 'widowed',
+          'occ10', 'wrkstat', 'hrs1', 'hrs2', 'wrkslf', 'wrkgovt1', 
+          'wrkgovt2', 'whatslf2', 'indus10',
+          'agekdbrn', 'childs', 'class', 'income16']]
+#print(df2.dtypes, '\n')
+print(df2.tail())
+print(list(df2.columns))
+# age (N) 
+# sex (C) : male or female
+# race (C)
+# digped (N??) : highschool education/degree
+# degree (C)
+# educ (N) : 10-20 ????
+# health (C) : poor, fair, good, excellent
+# happy (C) : level
+# marital (C) : status
+# martype (C) : type of marriage 
+# agewed (N) : age married
+# divorce (C) : yes/no
+# widowed (C) : yes/no
+# occ10 (C) : job/occ
+# wrkstat : part-time, full-time, school, keeping house
+# hrs1
+# hrs2 (N) : typical weekly hrs worked
+# wrkslf (C) : self employed?
+# wrkgovt1 (C) : government employeed
+# wrkgovt2 (C) : private employeed
+# whatslf2 (C) : work place classification
+# ind10 (N) : work industry????
+# agekdbrn (N) : age when 1st kd born
+# childs (N) : # of kids
+# class (C) : economic (self-evaluated)
+# income16 (N) : range total family income
+# Cleaning data to make sense in context
+
+# Checking sex data 
+
+for value, count in df2['sex'].value_counts().items():
+    print(f"{value}: {count} times")
+nan_count = df2['sex'].isna().sum()
+print(f"nans:{nan_count}")
