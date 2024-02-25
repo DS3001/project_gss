@@ -1,0 +1,281 @@
+variables you want, and then clean that subset of the data.
+
+[247]
+0s
+! git clone https://github.com/DS3001/project_gss
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+from sklearn.neighbors import KNeighborsRegressor
+fatal: destination path 'project_gss' already exists and is not an empty directory.
+[231]
+14s
+var_list = ['wrkstat', 'prestige'] # List of variables you want to save
+output_filename = 'selected_gss_data.csv' # Name of the file you want to save the data to
+
+modes = ['w','a'] # Has write mode and append mode
+phase = 0 # Starts in write mode; after one iteration of loop, switches to append mode
+
+for k in range(3): # for each chunk of the data
+    url = 'https://github.com/DS3001/project_gss/raw/main/gss_chunk_' + str(1+k) + '.parquet' # Create url to the chunk to be processed
+    #print(url
+(24130, 6694)
+Index(['year', 'id', 'wrkstat', 'hrs1', 'hrs2', 'evwork', 'occ', 'prestige',
+       'wrkslf', 'wrkgovt',
+       ...
+       'agehef12', 'agehef13', 'agehef14', 'hompoph', 'wtssps_nea',
+       'wtssnrps_nea', 'wtssps_next', 'wtssnrps_next', 'wtsscomp',
+       'wtsscompnr'],
+      dtype='object', length=6694)
+[238]
+0s
+# Creating new data frame with certain, potentially relevant variables
+df2 = df[['age', 'sex', 'race', 'degree', 'health', 'happy', 
+          'marital', 'martype', 'agewed', 'hrs2', 'indus10',
+          'agekdbrn', 'childs', 'class', 'income16']]
+#print(df2.dtypes, '\n')
+print(df2.tail())
+print(list(df2.columns))
+
+#df2 = df.copy()
+# age (N) 
+# sex (C) : male or female
+# race (C)
+# degree (C)
+# health (C) : poor, fair, good, excellent
+# happy (C) : level
+# marital (C) : status
+# martype (C) : type of marriage 
+# agewed (N) : age married
+# wrkstat : part-time, full-time, school, keeping house
+# hrs2 (N) : typical weekly hrs worked
+# wrkslf (C) : self employed?
+# wrkgovt1 (C) : government employeed
+# wrkgovt2 (C) : private employeed
+# whatslf2 (C) : work place classification
+# ind10 (N) : work industry
+# agekdbrn (N) : age when 1st kd born
+# childs (N) : # of kids
+# class (C) : economic (self-evaluated)
+# income16 (N) : range total family income
+        age     sex   race                    degree health         happy  \
+24125  22.0  female  white               high school   good  pretty happy   
+24126  29.0  female  white                  graduate   good  pretty happy   
+24127  32.0    male  white  associate/junior college   good  pretty happy   
+24128  49.0  female  white                  graduate   good    very happy   
+24129  50.0    male  white                  graduate   fair  pretty happy   
+
+             marital                             martype  agewed  hrs2  \
+24125  never married                                 NaN     NaN   NaN   
+24126        married                                 NaN     NaN   NaN   
+24127  never married                                 NaN     NaN   NaN   
+24128        married  marriage between a man and a woman     NaN   NaN   
+24129        married  marriage between a man and a woman     NaN   NaN   
+
+       indus10  agekdbrn  childs          class              income16  
+24125   8660.0       NaN     0.0    lower class    $25,000 to $29,999  
+24126   8190.0      25.0     2.0  working class    $60,000 to $74,999  
+24127   8190.0      28.0     1.0   middle class  $130,000 to $149,999  
+24128   7860.0       NaN     0.0   middle class  $150,000 to $169,999  
+24129   9170.0      42.0     1.0   middle class   $90,000 to $109,999  
+['age', 'sex', 'race', 'degree', 'health', 'happy', 'marital', 'martype', 'agewed', 'hrs2', 'indus10', 'agekdbrn', 'childs', 'class', 'income16']
+[240]
+0s
+# Cleaning data to make sense in context
+
+# Sex
+df2['sex'] = df['sex'].apply(lambda x: x if x in ['male', 'female'] else pd.NA)
+ 
+# Age - leave as is
+
+# Race
+df2['race'] = df['race'].apply(lambda x: x if x in ['white', 'black', 'other'] else pd.NA)
+
+# Degree
+df2['degree'] = df['degree'].apply(lambda x: x if x in ['high school', "bachelor's", 
+                                                        'graduate', 'less than high school',
+                                                        'associate/junior college'] else pd.NA)
+
+# Health
+df2['health'] = df['health'].apply(lambda x: x if x in ['poor', 'fair', 'excellent', 'good'] else pd.NA)
+
+# Happy
+df2['happy'] = df['happy'].apply(lambda x: x if x in ['very happy', 'pretty happy', 'not too happy'] else pd.NA)
+
+# Marital 
+df2['marital'] = df['marital'].apply(lambda x: x if x in ['married', 'never married', 
+                                                          'divorced', 'widowed', 
+                                                          'seperated'] else pd.NA)
+df2['marital'] = df2['marital'].fillna('not married')
+
+# martype
+df2['martype'] = df['martype'].apply(lambda x: x if x in ['marriage between a man and a woman', 
+                                                          'marriage between two people of the same gender'] else pd.NA)
+
+# agewed - leave as is
+
+# indus10 
+df2['indus10'] = pd.to_numeric(df2['indus10'], errors='coerce')
+bins = [0, 3540, 4650, 5940, 7630, 9750, 9830, float('inf')]
+labels = ['Management, Business, Science, and Arts Occupations', 
+          'Service Occupations', 
+          'Sales and Office Occupations', 
+          'Natural Resources, Construction, and Maintenance Occupations',
+          'Production, Transportation, and Material Moving Occupations',
+          'Military Specific Occupations',
+          'Other']
+
+df2['indus10'] = pd.cut(df2['indus10'], bins=bins, labels=labels, include_lowest=True, right=False)
+#df2['indus10'] = df2['indus10'].fillna('Unemployed')
+
+
+# hrs2 - leave as is
+
+# Childs  
+df2['childs'] = df['childs'].apply(lambda x: x if x in [0.0, 2.0, 3.0, 1.0, 4.0, 5.0, 6.0, 8.0, 7.0] else pd.NA)
+
+# Class  
+df2['class'] = df['class'].apply(lambda x: x if x in ['middle class', 'working class', 'lower class', 'upper class'] else pd.NA)
+
+# agekdbrn - leave as is
+
+# Income16
+df2['income16'] = df['income16'].apply(lambda x: x if x in ['$60,000 to $74,999', '$170,000 or over', '$75,000 to $89,999', '$90,000 to $109,999', 
+                                                           '$50,000 to $59,999', '$40,000 to $49,999', '$110,000 to $129,999', '$30,000 to $34,999', 
+                                                            '$35,000 to $39,999', '$130,000 to $149,999', '$25,000 to $29,999', '$150,000 to $169,999', 
+                                                            '$10,000 to $12,499', '$22,500 to $24,999', '$20,000 to $22,499', '$12,500 to $14,999', 
+                                                            '$15,000 to $17,499', '$17,500 to $19,999', '$8,000 to $9,999', 'under $1,000', 
+                                                            '$1,000 to $2,999', '$3,000 to $3,999', '$7,000 to $7,999', '$5,000 to $5,999', 
+                                                            '$6,000 to $6,999', '$4,000 to $4,999'] else pd.NA)
+
+
+<ipython-input-240-db1746240d07>:4: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df2['sex'] = df['sex'].apply(lambda x: x if x in ['male', 'female'] else pd.NA)
+<ipython-input-240-db1746240d07>:9: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df2['race'] = df['race'].apply(lambda x: x if x in ['white', 'black', 'other'] else pd.NA)
+<ipython-input-240-db1746240d07>:12: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df2['degree'] = df['degree'].apply(lambda x: x if x in ['high school', "bachelor's",
+<ipython-input-240-db1746240d07>:17: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df2['health'] = df['health'].apply(lambda x: x if x in ['poor', 'fair', 'excellent', 'good'] else pd.NA)
+<ipython-input-240-db1746240d07>:20: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df2['happy'] = df['happy'].apply(lambda x: x if x in ['very happy', 'pretty happy', 'not too happy'] else pd.NA)
+<ipython-input-240-db1746240d07>:23: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df2['marital'] = df['marital'].apply(lambda x: x if x in ['married', 'never married',
+<ipython-input-240-db1746240d07>:26: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df2['marital'] = df2['marital'].fillna('not married')
+<ipython-input-240-db1746240d07>:29: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df2['martype'] = df['martype'].apply(lambda x: x if x in ['marriage between a man and a woman',
+<ipython-input-240-db1746240d07>:35: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df2['indus10'] = pd.to_numeric(df2['indus10'], errors='coerce')
+<ipython-input-240-db1746240d07>:45: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df2['indus10'] = pd.cut(df2['indus10'], bins=bins, labels=labels, include_lowest=True, right=False)
+<ipython-input-240-db1746240d07>:52: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df2['childs'] = df['childs'].apply(lambda x: x if x in [0.0, 2.0, 3.0, 1.0, 4.0, 5.0, 6.0, 8.0, 7.0] else pd.NA)
+<ipython-input-240-db1746240d07>:55: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df2['class'] = df['class'].apply(lambda x: x if x in ['middle class', 'working class', 'lower class', 'upper class'] else pd.NA)
+<ipython-input-240-db1746240d07>:60: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df2['income16'] = df['income16'].apply(lambda x: x if x in ['$60,000 to $74,999', '$170,000 or over', '$75,000 to $89,999', '$90,000 to $109,999',
+[242]
+0s
+for value, count in df2['indus10'].value_counts().items():
+    print(f"{value}: {count} times")
+
+nan_count = df2['indus10'].isna().sum()
+print(f"nans:{nan_count}") 
+Production, Transportation, and Material Moving Occupations: 10712 times
+Natural Resources, Construction, and Maintenance Occupations: 4621 times
+Management, Business, Science, and Arts Occupations: 3971 times
+Sales and Office Occupations: 2184 times
+Service Occupations: 1340 times
+Other: 70 times
+Military Specific Occupations: 47 times
+nans:1185
+[241]
+0s
+print(df2.tail())
+        age     sex   race                    degree health         happy  \
+24125  22.0  female  white               high school   good  pretty happy   
+24126  29.0  female  white                  graduate   good  pretty happy   
+24127  32.0    male  white  associate/junior college   good  pretty happy   
+24128  49.0  female  white                  graduate   good    very happy   
+24129  50.0    male  white                  graduate   fair  pretty happy   
+
+             marital                             martype  agewed  hrs2  \
+24125  never married                                 NaN     NaN   NaN   
+24126        married                                 NaN     NaN   NaN   
+24127  never married                                 NaN     NaN   NaN   
+24128        married  marriage between a man and a woman     NaN   NaN   
+24129        married  marriage between a man and a woman     NaN   NaN   
+
+                                                 indus10  agekdbrn childs  \
+24125  Production, Transportation, and Material Movin...       NaN    0.0   
+24126  Production, Transportation, and Material Movin...      25.0    2.0   
+24127  Production, Transportation, and Material Movin...      28.0    1.0   
+24128  Production, Transportation, and Material Movin...       NaN    0.0   
+24129  Production, Transportation, and Material Movin...      42.0    1.0   
+
+               class              income16  
+24125    lower class    $25,000 to $29,999  
+24126  working class    $60,000 to $74,999  
+24127   middle class  $130,000 to $149,999  
+24128   middle class  $150,000 to $169,999  
+24129   middle class   $90,000 to $109,999  
+[246]
+0s
+df2.to_csv('leandf2.csv', index=False)
